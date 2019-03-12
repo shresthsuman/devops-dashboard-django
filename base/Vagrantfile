@@ -1,0 +1,43 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$docker_proxy_setup = <<-SCRIPT
+mkdir /etc/systemd/system/docker.service.d
+cp /shared/base/http-proxy.conf /etc/systemd/system/docker.service.d/
+systemctl daemon-reload
+systemctl restart docker
+SCRIPT
+
+Vagrant.configure('2') do |config|
+  config.vm.box = 'chaifeng/ubuntu-18.04-docker-18.03'
+
+  config.vm.provider :virtualbox do |vb|
+      vb.name = 'Dashboard Development Box'
+    end
+ 
+  raise 'vagrant-proxyconf is not installed! please run "vagrant plugin install vagrant-proxyconf"' unless Vagrant.has_plugin?('vagrant-proxyconf')
+
+  config.proxy.http     = 'http://iproxy.mms-dresden.de:8080'
+  config.proxy.https    = 'http://iproxy.mms-dresden.de:8080'
+  config.proxy.no_proxy = 'git.t-systems-mms.eu,localhost,127.0.0.1,binaries.mms-at-work.de,artifacts.mms-at-work.de'
+
+  config.vm.network 'forwarded_port', guest: 22, host: 26_020, id: 'ssh'
+  config.vm.network 'forwarded_port', guest: 80, host: 8081, id: 'http'
+  config.vm.network 'forwarded_port', guest: 443, host: 8443, id: 'https'
+
+  config.vm.synced_folder '../base', '/shared/base'
+  config.vm.synced_folder '../dashboard-frontend', '/shared/dashboard-frontend'
+  config.vm.synced_folder '../dashboard-backend', '/shared/dashboard-backend'
+
+  config.vm.provider :virtualbox do |vb|
+    vb.customize ['modifyvm', :id, '--memory', 8192]
+    vb.customize ['modifyvm', :id, '--cpus', 2]
+    vb.customize ['modifyvm', :id, '--ioapic', 'on']
+    vb.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
+    vb.customize ['modifyvm', :id, '--natsettings1', '1500,64,64,64,1024']
+  end
+
+  config.vm.provision 'shell', inline: 'apt install -y docker-compose'
+  config.vm.provision 'shell', inline: $docker_proxy_setup
+  config.vm.provision 'shell', inline: 'docker network create dashboard-net'
+end

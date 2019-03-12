@@ -1,0 +1,23 @@
+version: '3'
+services:
+  nginx:
+    build:
+      # use base directory as context so we have access to ./certificates in DOCKERFILE
+      context: .
+      dockerfile: ./nginx/Dockerfile
+      args:
+        http_proxy: http://iproxy.mms-dresden.de:8080
+        https_proxy: http://iproxy.mms-dresden.de:8080
+        HTTP_PROXY: http://iproxy.mms-dresden.de:8080
+        NO_PROXY: localhost,192.168.199.4
+        no_proxy: localhost,192.168.199.4
+    extra_hosts:
+      "dashboard.testing.mms-at-work.de": 192.168.199.4
+    ports:
+      - "80:80"
+      - "443:443"
+
+networks:
+  default:
+    external:
+      name: dashboard-net

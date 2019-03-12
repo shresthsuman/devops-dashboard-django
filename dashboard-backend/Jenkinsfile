@@ -1,0 +1,28 @@
+pipeline {
+  environment {
+    registry = "devopsdashboard.azurecr.io"
+    image = "/devopsdashboard/backend"
+  }
+  agent any
+  stages {
+    stage('building and pushing image') {
+      steps{
+        script {
+          docker.withRegistry('https://devopsdashboard.azurecr.io', 'azurehub') {
+              def customImage = docker.build registry + image + ":$BUILD_NUMBER"
+              customImage.push()
+          }
+        }
+      }
+    }
+    stage('update k8s') {
+      steps{
+        script {
+          docker.withRegistry('https://devopsdashboard.azurecr.io', 'azurehub') {
+              sh "kubectl set image deployment devops-dashboard-demo-backend devops-dashboard-demo-backend=devopsdashboard.azurecr.io/devopsdashboard/backend:${BUILD_NUMBER}"
+          }
+        }
+      }
+    }
+  }
+}
